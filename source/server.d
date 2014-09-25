@@ -46,15 +46,21 @@ class Server {
           uint nbytes = buf.read!uint();
           m_log.writefln("Total message size: %s", nbytes);
 
+          m_log.flush();
           string actionString = readQString(buf);
 
+          m_log.writeln(actionString);
+          m_log.flush();
+          
           Json input = parseJsonString(actionString);
           m_log.writeln(input);
+          m_log.flush();
           m_log.writeln(input["command"].get!string());
 
           string login = readQString(buf);
-          writefln("Login: %s", login);
+          m_log.writefln("Login: %s", login);
 
+          m_log.flush();
           Json sessionResponse = Json.emptyObject;
           sessionResponse.command = "welcome";
           sessionResponse.session = "derp";
