@@ -4,35 +4,41 @@ import vibe.d;
 import vibe.utils.validation;
 import std.conv;
 
+import std.stdio;
 // Creates session if not currently running
 string getSessionId(string user, string host)
 {
-  MongoCollection sessions = fareborn_db["users"];
+  MongoCollection sessions = fareborn_db["sessions"];
   
-  auto session = sessions.findOne(["username":user]);
+  Bson session = sessions.findOne(["username":user]);
   
   if( session.isNull() )
   {
+  	session = Bson.emptyObject();
   	session.username = user;
   	sessions.insert(session);
   }
   
   {
-  	Bson userSession = session["hosts"][host];
-  	if(!userSession.isNull())
+  	if(!session["hosts"].isNull() && !session["hosts"][host].isNull())
   	{
-  	  session["hosts"][host];
+  	  Bson userSession = session["hosts"][host];
   	  	
   	  return cast(string)userSession["id"];
   	}  
   	else
   	{
-  	  string session_id = generateSimplePasswordHash(user ~ host);
+  	  string session_id = generateSimplePasswordHash(user ~ host ~ to!string(Clock.currTime().stdTime()));
   	  	
+  	  Bson userSession = Bson.emptyObject();
   	  userSession.id = session_id;
   	  
-  	  Bson update;
-  	  update["$push"] = ["hosts":userSession];
+  	  Bson hosts_update = Bson.EmptyObject();
+  	  hosts_update.hosts = Bson([host: userSession]);
+  	  
+  	  Bson update = Bson.emptyObject();
+  	  update["$set"] = hosts_update;
+  	  
   	  sessions.update(["username":user], update);
   	  
   	  return session_id;
@@ -46,9 +52,9 @@ void registerUser(HTTPServerRequest req, HTTPServerResponse res)
   enforceHTTP("username" in req.form, HTTPStatus.badRequest, "Missing username field.");
   enforceHTTP("password" in req.form, HTTPStatus.badRequest, "Missing password field.");
 
-  auto email = validateEmail(req.params["email"]);
-  auto username = validateUserName(req.params["username"]); // default 3 - 32 length
-  auto password = validatePassword(req.params["password"], req.params["password"]); // default 8 -64 length
+  auto email = validateEmail(req.form["email"]);
+  auto username = validateUserName(req.form["username"]); // default 3 - 32 length
+  auto password = validatePassword(req.form["password"], req.form["password"]); // default 8 -64 length
   
   MongoCollection users = fareborn_db["users"];
   auto user = users.findOne(["email": email]);
@@ -64,14 +70,15 @@ void registerUser(HTTPServerRequest req, HTTPServerResponse res)
   // Okay to go ahead
   
   // fix this sheeo
-  string salt = to!string(Clock.currTime().stdTime()) ~ "banana";
+  string salt = generateSimplePasswordHash(
+  	to!string(Clock.currTime().stdTime()) ~ "banana");
   
   password = generateSimplePasswordHash(password, salt);
   
   users.insert( Bson(["email": Bson(email),"username": Bson(username),
   		        "password": Bson(password), "salt": Bson(salt), "validated":Bson(false)]));
   
-  Json resp;
+  Json resp = Json.emptyObject;
   
   resp.success = true;
   resp.session_id = getSessionId(username, "localhost");
@@ -83,20 +90,24 @@ void loginUser(HTTPServerRequest req, HTTPServerResponse res)
   enforceHTTP("username" in req.form, HTTPStatus.badRequest, "Missing username field.");
   enforceHTTP("password" in req.form, HTTPStatus.badRequest, "Missing password field.");
 
-  auto username = validateUserName(req.params["username"]); // default 3 - 32 length
-  auto password = validatePassword(req.params["password"], req.params["password"]); // default 8 -64 length
+  auto username = validateUserName(req.form["username"]); // default 3 - 32 length
+  auto password = validatePassword(req.form["password"], req.form["password"]); // default 8 -64 length
   
   MongoCollection users = fareborn_db["users"];
-  auto user = users.findOne(["username": username]);
+  Bson user = users.findOne(["username": username]);
   
-  enforceHTTP( user.isNull(), HTTPStatus.badRequest, "No such user.");
+  enforceHTTP( !user.isNull(), HTTPStatus.badRequest, "No such user or bad password.");
   
-  password = generateSimplePasswordHash(password, cast(string)user["salt"]);
+  writeln(user.to!string());
+  stdout.flush();
   
-  enforceHTTP( cast(string)user["password"] == password, HTTPStatus.badRequest,
-  	 "No such user.");
+  writeln(password);
+  bool pass_auth = testSimplePasswordHash(cast(string)user["password"], 
+  									password, cast(string)user["salt"]);
   
-  Json resp;
+  enforceHTTP( pass_auth, HTTPStatus.badRequest, "No such user or bad password.");
+  
+  Json resp = Json.emptyObject;
   
   resp.success = true;
   resp.session_id = getSessionId(username, "localhost");
