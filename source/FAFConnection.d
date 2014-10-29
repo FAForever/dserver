@@ -149,23 +149,7 @@ class FAFConnection
           FAFGame game = FAFGame.game(id);
           if(game !is null)
           {
-            FAFConnection host = game.host;
-            
-            Json msg = Json.emptyArray;
-            
-            msg ~= m_user.peer_ip ~ ":" ~ to!string(game_port);
-            msg ~= m_user.username;
-            msg ~= m_user.id;
-            
-            host.sendMsg("games", "ConnectToPeer", msg);
-            
-            msg = Json.emptyArray;
-            
-            msg ~= host.m_user.peer_ip ~ ":" ~ to!string(game.port);
-            msg ~= host.m_user.username;
-            msg ~= host.m_user.id;
-            
-            sendMsg("games", "JoinGame", msg);
+            game.joinGame(this, cast(ushort)game_port);
           }
           else
           {
@@ -182,6 +166,13 @@ class FAFConnection
           m_game.onMessage(command_id, args);
         }
         break;
+      case "ConnectedToHost": {
+        // Peer says it's connected.
+        if(m_game !is null)
+        {
+          m_game.verifyConnection(this);
+        }
+      } break;
       default:
         logInfo("GAMES command: %s : %s", command_id, 
                                           args.toString());
@@ -191,10 +182,9 @@ class FAFConnection
   void onDisconnected()
   {
     // If was hosting, destroy game
-    if(m_game !is null)
+    if(m_game !is null && m_game.host is this)
     {
-      m_game.finish(true);
-      m_game = null;
+      m_game.peerDisconnected(this);
     }
   }
   

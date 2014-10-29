@@ -20,10 +20,19 @@ import FAFConnection;
 */
 public class FAFGame
 {
+  enum State{
+    Initializing=0,
+    Lobby,
+    Live
+  }
   private {
     int m_game_id;
     FAFConnection m_host;
     ushort m_port;
+    State m_state;
+    
+    Array!(FAFConnection*) m_players; // includes host
+    Task[FAFConnection] m_verifiers;
   }
   
   @property 
@@ -31,9 +40,14 @@ public class FAFGame
   
   @property
   FAFConnection host() { return m_host; }
-  
   @property
   ushort port() { return m_port; }
+  
+  @property
+  State state() { return m_state; }
+  
+  @property
+  Array!(FAFConnection*) players() { return m_players; }
   
   static {
     private FAFGame[int] games;
@@ -48,6 +62,10 @@ public class FAFGame
   {
     m_host = host;
     m_port = port;
+    
+    m_players ~= &host;
+    
+    m_state = State.Initializing;
     
     // Reserve id
     Bson meta = fareborn_db["meta"].findAndModify(["_id":"games"], ["$inc":Bson(["next_id": Bson(1)])]);
@@ -108,8 +126,16 @@ public class FAFGame
       case "GameState": {
         string newState = args[0].get!string;
         
-        if(newState == "Launching")
-          newState = "Live";
+        switch(newState)
+        {
+          case "Lobby":
+            m_state = State.Lobby;
+            break;
+          case "Launching":
+            newState = "Live";
+            m_state = State.Live;
+            break;
+        }
         
         update["$set"] = ["GameState": Bson(newState)];
       } break;
@@ -167,6 +193,89 @@ public class FAFGame
     fareborn_db["games"].update(["id":m_game_id], update);
     onUpdate();
   }
+  
+  void joinGame(FAFConnection peer, ushort game_port)
+  {
+    m_verifiers[peer] = runTask({
+      Json msg = Json.emptyArray;
+      
+      msg ~= peer.m_user.peer_ip ~ ":" ~ to!string(game_port);
+      msg ~= peer.m_user.username;
+      msg ~= peer.m_user.id;
+      
+      m_host.sendMsg("games", "ConnectToPeer", msg);
+      
+      msg = Json.emptyArray;
+      
+      msg ~= m_host.m_user.peer_ip ~ ":" ~ to!string(port);
+      msg ~= m_host.m_user.username;
+      msg ~= m_host.m_user.id;
+      
+      peer.sendMsg("games", "JoinGame", msg);
+      
+      m_players ~= &peer;
+      
+      if(!receiveTimeout(5.seconds,
+            (bool conn_ok){
+              assert(conn_ok);
+              return;
+            }))
+      {
+        // No verification received.
+        
+        throw new Exception("IMPLEMENT PROXY HIER.");
+      }
+      
+      m_verifiers.remove(peer);
+    });
+  }
+  
+  // Called to tell the connection to peer is ok.
+  void verifyConnection(FAFConnection peer)
+  {
+    if(peer in m_verifiers)
+    {
+      Task verifier = m_verifiers[peer];
+      
+      verifier.send(true);
+    }
+  }
+  
+  void peerDisconnected(FAFConnection peer)
+  {
+    // Host left lobby
+    if(state <= State.Lobby && peer is m_host)
+    {
+      finish(true);
+      return;
+    }
+    
+    // Peer left game
+    if(state == State.Live && !m_players[].find(&peer).empty)
+    {
+      if(m_host !is null && peer is m_host)
+      {
+        m_host = null;
+      }
+      
+      m_players.linearRemove( m_players[].find(&peer) );
+      
+      // Orphaned game
+      if(m_players.length == 0)
+      {
+        // Destroy it after 10 minutes if nothing occurs to unorphan it.
+        runTask({
+          if(!receiveTimeout(10.minutes,
+                (bool unorphaned){ 
+                  assert(unorphaned);
+                  
+                }))
+            finish(true);
+        });
+      }
+    }
+  }
+  
   // Game ended.
   void finish(bool forced = false)
   {
