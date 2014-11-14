@@ -6,11 +6,14 @@ MongoDatabase fareborn_db;
 
 GamesService gamesService;
 NotifyService notifyService;
+UserService userService;
 
 import auth_service;
 
 import games;
 import notify;
+
+import users;
 
 import FAFConnection;
 
@@ -32,6 +35,7 @@ shared static this()
 	
   gamesService = new GamesService;
   notifyService = new NotifyService;
+  userService = new UserService;
   
   // HTTP Services
   {
@@ -42,6 +46,7 @@ shared static this()
   	
   	router.registerRestInterface(gamesService, "/games");
   	router.get( "/notify/ws", FAFConnection.FAFConnection.http_handler() );
+  	router.registerRestInterface(userService, "/user");
   	
     writeln(router.getAllRoutes());
   	listenHTTP( settings, router);
