@@ -149,13 +149,13 @@ public class FAFGame
         {
           int newSlot = value.get!int;
           
-          if(slot != value.get!int)
+          if(newSlot != slot)
           {
             Bson slot_update = Bson.emptyObject;
             slot_update["$rename"] = ["PlayerOption." ~ text(slot):
                                    Bson("PlayerOption." ~ text(newSlot))];
                                    
-            fareborn_db["games"].update(["_id":m_game_id], slot_update);
+            fareborn_db["games"].update(["id":m_game_id], slot_update);
             
             slot = newSlot;
           }
@@ -174,6 +174,14 @@ public class FAFGame
         else if(option == "Clear")
         {
           update["$unset"] = ["PlayerOption." ~ text(slot): Bson()];
+        }
+        // GPG Team number is 2-based, 1 means no team.
+        // I choose to fix this here, because the lua code was built
+        // on the aforementioned presumption.
+        else if(option == "Team")
+        {
+          update["$set"] = ["PlayerOption." ~ text(slot) ~ "." ~ option:
+                            Bson(args[2].get!int - 1)];
         }
         else
         {
@@ -281,7 +289,7 @@ public class FAFGame
   {
     if(m_update_push_task)
     {
-      m_update_push_task.terminate();
+      //m_update_push_task.terminate();
       m_update_push_task.join();
     }
       
