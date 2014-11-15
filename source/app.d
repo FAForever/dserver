@@ -1,7 +1,11 @@
 import vibe.d;
+import mysql;
 
 MongoClient client;
 MongoDatabase fareborn_db;
+
+alias MysqlConnection = mysql.Connection;
+MysqlConnection mysql_con;
 
 GamesService gamesService;
 NotifyService notifyService;
@@ -29,6 +33,14 @@ void handleError(HTTPServerRequest req, HTTPServerResponse res, HTTPServerErrorI
 }
 shared static this()
 {
+  Json config = readFileUTF8("faf-server.conf").parseJsonString;
+  
+  mysql_con = new MysqlConnection(config.db.host.get!string,
+                                  config.db.user.get!string,
+                                  config.db.pass.get!string,
+                                  config.db.db.get!string,
+                                  config.db.port.to!ushort);
+  
 //  client = connectMongoDB("127.0.0.1");
 //  fareborn_db = client.getDatabase("fareborn");
 	
@@ -39,7 +51,7 @@ shared static this()
   // HTTP Services
   {
   	auto settings = new HTTPServerSettings;
-  	settings.port = 8080;
+  	settings.port = config.port.to!ushort;
   	
   	auto router = new URLRouter;
   	

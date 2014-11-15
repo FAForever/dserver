@@ -1,3 +1,6 @@
 .dub/
 __test__library__
-fa-server
+faf-server
+
+# Don't let people accidentally commit server credentials
+faf-server.conf

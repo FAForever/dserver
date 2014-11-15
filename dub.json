@@ -6,7 +6,8 @@
   "authors": ["msond", "eximius"],
   "dependencies": {
     "vibe-d": ">=0.7.21-beta.1",
-	"scrypt-d": ">=0.1.1"
+	"scrypt-d": ">=0.1.1",
+	"mysql-native": ">=0.1.0"
   },
   "versions": ["VibeDefaultMain"],
   "mainSourceFile": "./source/app.d",
