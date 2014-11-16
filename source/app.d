@@ -15,6 +15,9 @@ import games;
 import notify;
 
 import users;
+import VersionService;
+
+VersionService versionService;
 
 import FAFConnection;
 
@@ -45,6 +48,7 @@ shared static this()
 //  gamesService = new GamesService;
 //  notifyService = new NotifyService;
 //  userService = new UserService;
+  versionService = new VersionService;
   // HTTP Services
   {
   	auto settings = new HTTPServerSettings;
@@ -55,6 +59,7 @@ shared static this()
 //  	router.registerRestInterface(gamesService, "/games");
 //  	router.get( "/notify/ws", FAFConnection.FAFConnection.http_handler() );
 //  	router.registerRestInterface(userService, "/user");
+    router.registerRestInterface(versionService, "/version");
 
     logInfo("%s", router.getAllRoutes);
   	listenHTTP( settings, router);
