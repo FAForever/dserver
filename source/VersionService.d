@@ -60,16 +60,16 @@ class VersionService : VersionServiceAPI
         switch(ver.type)
         {
           case "engine":
-            ver.url = "http://git.dev.faforever.com/"~ver.repo~".git";
+            ver.url = "http://git."~_FAFServerSettings.hostname~"/"~ver.repo~".git";
             break;
           case "main_mod":
-            ver.url = "http://git.dev.faforever.com/"~ver.repo~".git";
+            ver.url = "http://git."~_FAFServerSettings.hostname~"/"~ver.repo~".git";
             break;
           case "map":
-            ver.url = "http://git.dev.faforever.com/maps/"~ver.repo~".git";
+            ver.url = "http://git."~_FAFServerSettings.hostname~"/maps/"~ver.repo~".git";
             break;
           case "mod":
-            ver.url = "http://git.dev.faforever.com/mods/"~ver.repo~".git";
+            ver.url = "http://git."~_FAFServerSettings.hostname~"/mods/"~ver.repo~".git";
             break;
         }
 

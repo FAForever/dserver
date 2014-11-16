@@ -244,12 +244,12 @@ class AuthService : AuthServiceAPI
     auto settings = new SMTPClientSettings();
     
     auto mail = new Mail;
-    mail.headers["From"] = "<no-reply@faforever.tk>";
+    mail.headers["From"] = "<no-reply@"~_FAFServerSettings.hostname~">";
     mail.headers["To"] = "<"~ user.email.get!string ~">";
     mail.headers["Subject"] = "Validate your account FAForever";
     mail.bodyText = "Hi "~ user.username.get!string ~",\n\n"
                     "Here is your validation link: "
-                    "http://faforever.tk:44343/auth/activate?k="
+                    "http://"~_FAFServerSettings.hostname~"/auth/activate?k="
                      ~ validation_key ~ "\n\n"
                      "Cheers,\nbotbot";
     

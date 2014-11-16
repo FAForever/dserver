@@ -5,6 +5,24 @@ MongoDatabase fareborn_db;
 
 import sql;
 
+struct FAFServerSettings
+{
+  string hostname;
+  ushort port;
+
+  struct DB {
+    string host;
+    string user;
+    string pass;
+    string db;
+    ushort port;
+  }
+
+  DB db;
+}
+
+FAFServerSettings _FAFServerSettings;
+
 GamesService gamesService;
 NotifyService notifyService;
 UserService userService;
@@ -36,6 +54,8 @@ shared static this()
 {
   Json config = readFileUTF8("faf-server.conf").parseJsonString;
   
+  _FAFServerSettings.deserializeJson(config);
+
   mysql_db = new MysqlDB(config.db.host.get!string,
                          config.db.user.get!string,
                          config.db.pass.get!string,
