@@ -12,7 +12,7 @@ struct RepoVersion
   string name;
 
   string repo;
-  string _ref;
+  @NameAttribute("ref") string _ref;
   string url;
   string hash;
 
